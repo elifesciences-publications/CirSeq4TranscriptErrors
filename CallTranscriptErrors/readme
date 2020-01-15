@@ -1,5 +1,6 @@
 #1.Adapter trimming by Trimmomatic
 #adapter.fa contains the 13 bases that all index primers share.
+#sample.fastq is the raw sequencing reads which can be found at NCBI with the BioProject Number PRJNA592142.
 java -jar trimmomatic-0.32.jar SE -phred33 sample.fastq sample.fastq.trimmed ILLUMINACLIP:adapter.fa:4:0:7
 
 #2.Infer the size of tandem repeats
@@ -11,6 +12,7 @@ python get_consensus.py sample.fastq.trimmed sample.fastq.RepeatSize
 
 #4.Mapping to identify the junction of circularization and reorganize the consensus sequence 
 #cds case
+#ref_cds.fa in SampleData folder corresponds to E. coli MG1655
 bwa mem ref_cds.fa sample.fastq.trimmed_Consensus.fq > sample.sam 
 
 #5.Reorganize the consensus sequence according to mapping results
@@ -20,6 +22,7 @@ python reorganize_consensus.py sample.sam
 
 #6.Map reorganized consensus sequences
 #1st mapping to the genome
+#genome.fa in SampleData folder corresponds to E. coli MG1655
 bwa mem genome.fa sample.sam_reads.fq > tmp.sam  
 
 #7.Get rid of  multiple hits
