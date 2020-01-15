@@ -1,0 +1,51 @@
+#1.Adapter trimming by Trimmomatic
+#adapter.fa contains the 13 bases that all index primers share.
+java -jar trimmomatic-0.32.jar SE -phred33 sample.fastq sample.fastq.trimmed ILLUMINACLIP:adapter.fa:4:0:7
+
+#2.Infer the size of tandem repeats
+#suggested cutoff on the identity of potential repeats:0.85 
+python infer_repeat_size.py sample.fastq.trimmed 0.85 > sample.fastq.RepeatSize
+
+#3.Merge tandem repeats into consensus sequences in a duplicate format
+python get_consensus.py sample.fastq.trimmed sample.fastq.RepeatSize
+
+#4.Mapping to identify the junction of circularization and reorganize the consensus sequence 
+#cds case
+bwa mem ref_cds.fa sample.fastq.trimmed_Consensus.fq > sample.sam 
+
+#5.Reorganize the consensus sequence according to mapping results
+python reorganize_consensus.py sample.sam
+---------------------------------------------
+#Raw CirSeq reads are parsed and then move to the part of error detection
+
+#6.Map reorganized consensus sequences
+#1st mapping to the genome
+bwa mem genome.fa sample.sam_reads.fq > tmp.sam  
+
+#7.Get rid of  multiple hits
+python multiple_hits_filter.py tmp.sam sample.sam_reads.fq > reads.fq 
+
+#8.Arbitrarily trim 4nt of two ends of reads
+python trim_ends.py reads.fq > reads_2.fq
+
+#9.The final round of mapping to detect errors
+bwa mem ref_cds.fa reads_2.fq > aln.sam
+
+#10.Mark base calls with low qs as "N"
+python reads_quality_filter.py aln.sam > tmp2.sam
+
+#11.Retain reads with a full match
+awk '{if($6!~/I|D|S/)print}' tmp2.sam > tmp3.sam
+
+#12.Retain reads with uniq hits and reformat into bam format
+samtools view -q 1 -bS tmp3.sam > aln.bam
+
+#13. Sort bam and get pileups
+samtools sort aln.bam -o aln.sort.bam
+#Need to adjust --max-depth(-d) to keep all reads at each locus, the default is 8000
+samtools mpileup -d 1000000 -s -f ref_cds.fa aln.sort.bam > pileup
+
+#14.Call errors and calculate the total number of coverages
+python pileup_analysis.py  pileup 0.01 > list_of_errors
+python get_total_coverage.py pileup 0.01 > total_coverages
+
