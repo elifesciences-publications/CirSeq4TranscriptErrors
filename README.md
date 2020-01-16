@@ -1,6 +1,6 @@
 # CirSeq4TranscriptErrors
 Analysis pipelines to call and analyze transcript errors from CirSeq data
 
-folder 1 
+CallTranscriptErrors: scripts to call transcript errors
 
-folder 2
+AnalyzeNonsenseErrors: scripts to evluate the distribution of nonsense errors
